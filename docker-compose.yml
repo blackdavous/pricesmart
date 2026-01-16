@@ -12,8 +12,6 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./database/init.sql:/docker-entrypoint-initdb.d/init.sql
-    networks:
-      - louder_network
 
   # Redis for caching and Celery broker
   redis:
@@ -21,8 +19,6 @@ services:
     command: redis-server --appendonly yes
     volumes:
       - redis_data:/data
-    networks:
-      - louder_network
 
   # FastAPI Backend
   backend:
@@ -41,8 +37,6 @@ services:
     depends_on:
       - postgres
       - redis
-    networks:
-      - louder_network
     restart: unless-stopped
 
   # Celery Worker
@@ -60,8 +54,6 @@ services:
     depends_on:
       - postgres
       - redis
-    networks:
-      - louder_network
     restart: unless-stopped
 
   # Celery Beat (Scheduler)
@@ -77,8 +69,6 @@ services:
     depends_on:
       - postgres
       - redis
-    networks:
-      - louder_network
     restart: unless-stopped
 
   # Flower (Celery monitoring)
@@ -96,8 +86,6 @@ services:
     depends_on:
       - celery_worker
       - redis
-    networks:
-      - louder_network
     restart: unless-stopped
 
   # Streamlit Frontend
@@ -115,19 +103,12 @@ services:
       - BACKEND_URL=http://backend:8000
       - PORT=8501
     labels:
-      # Specific label for Coolify detection
       - "coolify.exposedPort=8501"
     env_file:
       - .env
     depends_on:
       - backend
-    networks:
-      - louder_network
     restart: unless-stopped
-
-networks:
-  louder_network:
-    driver: bridge
 
 volumes:
   postgres_data:
