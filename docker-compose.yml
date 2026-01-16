@@ -4,7 +4,6 @@ services:
   # PostgreSQL Database with pgvector
   postgres:
     image: pgvector/pgvector:pg15
-    container_name: louder_postgres
     environment:
       POSTGRES_DB: louder_db
       POSTGRES_USER: louder_user
@@ -13,32 +12,15 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./database/init.sql:/docker-entrypoint-initdb.d/init.sql
-    ports:
-      - "5432:5432"
-    healthcheck:
-      test: [ "CMD-SHELL", "pg_isready -U louder_user -d louder_db" ]
-      interval: 10s
-      timeout: 5s
-      retries: 10
-      start_period: 30s
     networks:
       - louder_network
 
   # Redis for caching and Celery broker
   redis:
     image: redis:7-alpine
-    container_name: louder_redis
     command: redis-server --appendonly yes
     volumes:
       - redis_data:/data
-    ports:
-      - "6379:6379"
-    healthcheck:
-      test: [ "CMD", "redis-cli", "ping" ]
-      interval: 10s
-      timeout: 5s
-      retries: 10
-      start_period: 10s
     networks:
       - louder_network
 
@@ -55,10 +37,8 @@ services:
     env_file:
       - .env
     depends_on:
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
+      - postgres
+      - redis
     networks:
       - louder_network
     restart: unless-stopped
@@ -76,10 +56,8 @@ services:
     env_file:
       - .env
     depends_on:
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
+      - postgres
+      - redis
     networks:
       - louder_network
     restart: unless-stopped
@@ -95,10 +73,8 @@ services:
     env_file:
       - .env
     depends_on:
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
+      - postgres
+      - redis
     networks:
       - louder_network
     restart: unless-stopped
