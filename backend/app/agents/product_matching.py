@@ -310,6 +310,7 @@ class ProductMatchingAgent:
 
             # --- DIGIT CONSISTENCY CHECK ---
             if not self._check_digit_consistency(target, title):
+                 target_digits = re.findall(r'\b\d+\b', target)
                  return ProductClassification(
                     item_id=offer.get('item_id', ''),
                     title=title,
@@ -317,7 +318,7 @@ class ProductMatchingAgent:
                     is_accessory=False,
                     is_bundle=False,
                     confidence=0.95,
-                    reason=f"Digit Mismatch: Target numbers {re.findall(r'\\b\\d+\\b', target)} not found in offer."
+                    reason=f"Digit Mismatch: Target numbers {target_digits} not found in offer."
                 )
             
             # --- KEYWORD SAFETY CHECK ---
