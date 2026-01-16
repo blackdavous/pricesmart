@@ -34,6 +34,10 @@ services:
       - ./backend:/app
     expose:
       - "8000"
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.services.backend.loadbalancer.server.port=8000"
+      - "traefik.http.routers.backend.entrypoints=websecure"
     env_file:
       - .env
     depends_on:
@@ -87,6 +91,9 @@ services:
     command: celery -A core.celery_app flower --port=5555
     expose:
       - "5555"
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.services.flower.loadbalancer.server.port=5555"
     env_file:
       - .env
     depends_on:
@@ -107,6 +114,11 @@ services:
       - ./frontend:/app
     expose:
       - "8501"
+    labels:
+      - "traefik.enable=true"
+      # FORCE TRAEFIK TO USE PORT 8501 (Default is 80, which causes 404)
+      - "traefik.http.services.frontend.loadbalancer.server.port=8501"
+      - "traefik.http.routers.frontend.entrypoints=websecure"
     env_file:
       - .env
     environment:
