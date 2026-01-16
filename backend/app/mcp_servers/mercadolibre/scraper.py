@@ -590,8 +590,83 @@ class MLWebScraper:
             if details:
                 return details
         
+        # Fallback to HTML Parsing (BeautifulSoup)
+        details = self._extract_details_from_html(html, product_url)
+        if details:
+            return details
+        
         logger.warning("Could not extract product details from page")
         return None
+
+    def _extract_details_from_html(self, html: str, url: str) -> Optional[ProductDetails]:
+        """Extract product details directly from HTML using BeautifulSoup."""
+        try:
+            soup = BeautifulSoup(html, 'lxml')
+            
+            # 1. Extract Title
+            title_tag = soup.select_one('.ui-pdp-title')
+            if not title_tag:
+                return None
+            title = title_tag.get_text().strip()
+            
+            # 2. Extract Price
+            price = 0.0
+            price_fraction = soup.select_one('.ui-pdp-price__second-line .andes-money-amount__fraction')
+            if not price_fraction:
+                 # Try first line or generic generic
+                 price_fraction = soup.select_one('.andes-money-amount__fraction')
+            
+            if price_fraction:
+                try:
+                    price = float(price_fraction.get_text().strip().replace('.', '').replace(',', ''))
+                except:
+                    pass
+            
+            # 3. Extract Image
+            image_url = None
+            img_tag = soup.select_one('.ui-pdp-gallery__figure img')
+            if img_tag:
+                image_url = img_tag.get('src') or img_tag.get('data-src')
+            
+            # 4. Extract Product ID from URL
+            product_id = ""
+            match = re.search(r"ML[A-Z]-?\d+", url)
+            if match:
+                product_id = match.group(0).replace("-", "")
+            
+            # 5. Extract Attributes (Basic)
+            attributes = {}
+            # Try to grab specs table
+            for row in soup.select('.ui-pdp-specs__table tr'):
+                cols = row.select('th, td')
+                if len(cols) == 2:
+                    k = cols[0].get_text().strip()
+                    v = cols[1].get_text().strip()
+                    attributes[k] = v
+            
+            # Extract Brand/Model from attributes if available
+            brand = attributes.get('Marca') or attributes.get('Brand')
+            model = attributes.get('Modelo') or attributes.get('Model')
+
+            return ProductDetails(
+                product_id=product_id,
+                title=title,
+                price=price,
+                currency="MXN", # Default for .com.mx
+                condition="new", # Assumption if not found
+                brand=brand,
+                model=model,
+                category=None,
+                attributes=attributes,
+                description=None,
+                images=[image_url] if image_url else [],
+                seller_name=None,
+                permalink=url,
+                image_url=image_url
+            )
+        except Exception as e:
+            logger.error(f"Error extracting details from HTML: {e}")
+            return None
     
     def _extract_details_from_state(self, state: dict, url: str) -> Optional[ProductDetails]:
         """Extract product details from __PRELOADED_STATE__."""
