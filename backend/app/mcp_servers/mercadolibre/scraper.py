@@ -557,20 +557,34 @@ class MLWebScraper:
         """
         Extract detailed information from a specific product page.
         
-        This is used to analyze your pivot product (e.g., Louder branded item)
-        to understand its characteristics before searching for similar products.
-        
-        Args:
-            product_url: Full URL to the product page (e.g., https://www.mercadolibre.com.mx/.../p/MLM50988032)
-            
-        Returns:
-            ProductDetails with complete product information or None
+        Hybrid Strategy:
+        1. Check for ML_ACCESS_TOKEN env var.
+        2. If present, extract ID and call API (Bypasses Blocking).
+        3. If not, fallback to Scraping (HTML/JSON-LD).
         """
-        logger.info(
-            "Extracting product details from URL",
-            url=product_url
-        )
+        logger.info("Extracting product details...", url=product_url)
         
+        # 1. Extract Product ID (Always needed)
+        product_id = ""
+        match = re.search(r"ML[A-Z]-?\d+", product_url)
+        if match:
+            product_id = match.group(0).replace("-", "")
+            
+        # 2. Try API Strategy (If Token Exists)
+        import os
+        api_token = os.getenv("ML_ACCESS_TOKEN")
+        
+        if api_token and product_id:
+            logger.info(f"ML Protocol: Using API for pivot product {product_id}")
+            try:
+                details = await self._extract_details_from_api(product_id, api_token)
+                if details:
+                    details.permalink = product_url # Ensure original URL is kept
+                    return details
+            except Exception as e:
+                logger.error(f"API Strategy failed, falling back to scraper: {e}")
+        
+        # 3. Fallback to Scraper Strategy
         try:
             html = await self._fetch_url(product_url)
         except Exception as e:
@@ -597,11 +611,50 @@ class MLWebScraper:
             return details
         
         # If we got here, we have HTML but couldn't parse it.
-        # Check for Captcha again to be sure
         if "captcha" in html.lower() or "security" in html.lower():
              raise Exception("Blocked: MercadoLibre is serving a Captcha.")
              
         raise Exception(f"Parsing Error: HTML length {len(html)} but no data found. Title: {BeautifulSoup(html, 'lxml').title.string if BeautifulSoup(html, 'lxml').title else 'No Title'}")
+
+    async def _extract_details_from_api(self, item_id: str, token: str) -> Optional[ProductDetails]:
+        """Fetch product details from official MercadoLibre API."""
+        url = f"https://api.mercadolibre.com/items/{item_id}"
+        headers = {"Authorization": f"Bearer {token}"}
+        
+        async with AsyncSession(timeout=self.timeout) as client:
+            resp = await client.get(url, headers=headers)
+            if resp.status_code == 200:
+                data = resp.json()
+                
+                # Fetch Description
+                desc_url = f"https://api.mercadolibre.com/items/{item_id}/description"
+                desc_resp = await client.get(desc_url, headers=headers)
+                description = desc_resp.json().get("plain_text", "") if desc_resp.status_code == 200 else ""
+
+                attributes = {attr["id"]: attr.get("value_name") for attr in data.get("attributes", [])}
+                
+                return ProductDetails(
+                    product_id=data.get("id"),
+                    title=data.get("title"),
+                    price=float(data.get("price", 0)),
+                    currency=data.get("currency_id"),
+                    condition=data.get("condition"),
+                    brand=attributes.get("BRAND"),
+                    model=attributes.get("MODEL"),
+                    category=data.get("category_id"),
+                    attributes=attributes,
+                    description=description,
+                    images=[p["url"] for p in data.get("pictures", [])],
+                    seller_name=None, # API doesn't expose seller name directly in public item view sometimes
+                    permalink=data.get("permalink"),
+                    image_url=data.get("thumbnail")
+                )
+            elif resp.status_code == 403:
+                raise Exception("API Token Refused (403)")
+            elif resp.status_code == 404:
+                return None
+            else:
+                raise Exception(f"API Error {resp.status_code}")
 
     def _extract_details_from_html(self, html: str, url: str) -> Optional[ProductDetails]:
         """Extract product details directly from HTML using BeautifulSoup."""
