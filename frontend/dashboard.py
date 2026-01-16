@@ -203,6 +203,12 @@ def main():
         # Backend status
         if BACKEND_AVAILABLE:
             st.success("✅ Backend conectado")
+            # --- DEBUG: Show API Token Status ---
+            # Ideally this would come from a /health/config endpoint, but for now we assume 
+            # if user put it in Coolify Env, backend has it.
+            # We can't check backend env from frontend easily in this architecture without an endpoint.
+            # However, we can add a text reminding them.
+            st.caption("ℹ️ Asegúrate de tener `ML_ACCESS_TOKEN` en Coolify Variables si ves bloqueos.")
         else:
             st.warning("⚠️ Modo local (sin API)")
             st.caption("El análisis se ejecutará directamente")
