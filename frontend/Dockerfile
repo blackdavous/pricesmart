@@ -5,7 +5,7 @@ WORKDIR /app
 # Copy requirements
 COPY requirements.txt .
 
-# Install system dependencies (required for lxml, brotli, cryptography, etc)
+# Install system dependencies
 RUN apt-get update && apt-get install -y \
     build-essential \
     libssl-dev \
@@ -14,10 +14,13 @@ RUN apt-get update && apt-get install -y \
     gcc \
     libxml2-dev \
     libxslt-dev \
+    pkg-config \
+    libpq-dev \
     && rm -rf /var/lib/apt/lists/*
 
-# Install dependencies
-RUN pip install --no-cache-dir -r requirements.txt
+# Upgrade pip and install dependencies
+RUN pip install --no-cache-dir --upgrade pip && \
+    pip install --no-cache-dir -r requirements.txt
 
 # Copy application code
 COPY frontend /app/frontend
