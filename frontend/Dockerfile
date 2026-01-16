@@ -22,8 +22,13 @@ RUN apt-get update && apt-get install -y \
 # Upgrade pip and install uv
 RUN pip install --no-cache-dir --upgrade pip uv
 
-# Install requirements using uv (much faster and reliable)
-RUN uv pip install --system --no-cache -r requirements.txt
+# Create virtual environment
+ENV VIRTUAL_ENV=/opt/venv
+RUN uv venv $VIRTUAL_ENV
+ENV PATH="$VIRTUAL_ENV/bin:$PATH"
+
+# Install requirements into venv
+RUN uv pip install --no-cache -r requirements.txt
 
 # Copy application code
 COPY frontend /app/frontend

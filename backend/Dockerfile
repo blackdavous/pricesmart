@@ -23,8 +23,13 @@ COPY requirements.txt .
 # Upgrade pip and install uv
 RUN pip install --no-cache-dir --upgrade pip uv
 
-# Install requirements using uv
-RUN uv pip install --system --no-cache -r requirements.txt
+# Create virtual environment
+ENV VIRTUAL_ENV=/opt/venv
+RUN uv venv $VIRTUAL_ENV
+ENV PATH="$VIRTUAL_ENV/bin:$PATH"
+
+# Install requirements into venv
+RUN uv pip install --no-cache -r requirements.txt
 
 # Copy application code structure
 COPY backend/app /app/app
