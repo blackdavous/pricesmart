@@ -36,7 +36,7 @@ RUN pip install --no-cache-dir --prefer-binary lxml brotli cryptography
 
 # Install core framework
 # Install core framework
-RUN pip install --no-cache-dir --prefer-binary fastapi uvicorn[standard] sqlalchemy pydantic pydantic-settings structlog
+RUN pip install --no-cache-dir --prefer-binary fastapi uvicorn[standard] sqlalchemy pydantic pydantic-settings structlog prometheus_client
 
 # Install remaining dependencies explicitly to avoid massive dependency resolution
 RUN pip install --no-cache-dir --prefer-binary \
