@@ -594,8 +594,36 @@ class MLWebScraper:
                 logger.error(f"API Strategy failed, falling back to scraper: {e}")
         elif not api_token:
             api_error = "Token Env Var Missing"
-        
-        # 3. Fallback to Scraper Strategy
+            
+        # 3. Strategy: Search Page Bypass (New Anti-Blocking layer)
+        # PDP pages are heavily guarded. Search pages with the ID often bypass this.
+        if product_id:
+             logger.info(f"ML Protocol: Attempting Search Bypass for {product_id}")
+             try:
+                 search_res = await self.search_products(f"{product_id}", max_offers=1)
+                 if search_res and search_res.offers:
+                     best_match = search_res.offers[0]
+                     logger.info(f"Search Bypass Success: Found {best_match.title}")
+                     return ProductDetails(
+                        product_id=product_id,
+                        title=best_match.title,
+                        price=best_match.price,
+                        currency="MXN", 
+                        condition="unknown",
+                        brand=None, # Lost in search view
+                        model=None,
+                        category=None,
+                        attributes={},
+                        description="Extracted via Search Bypass (PDP Blocked)",
+                        images=[], # Search view usually doesn't give high-res images directly
+                        seller_name=None,
+                        permalink=best_match.url or product_url,
+                        image_url=None
+                     )
+             except Exception as e:
+                 logger.warning(f"Search Bypass failed: {e}")
+
+        # 4. Fallback to Direct PDP Scraping (Risky)
         try:
             html = await self._fetch_url(product_url)
         except Exception as e:
